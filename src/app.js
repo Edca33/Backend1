@@ -1,15 +1,18 @@
 import express from 'express';
 import ProductManager from './Class/productManager.js';
 import { __dirname } from './utils.js';
+import path from 'path';
 import CartManager from './Class/cartManager.js';
+ 
 
+const cartManager = new CartManager(path.join(__dirname, 'data', 'carrito.json'));
 
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 const productManager = new ProductManager(__dirname + '/data/product.json');
-const cartManager = new CartManager(__dirname + '/data/carrito.json')
+
 
 app.post('/', async (req, res) => {
     //console.log('entro a al post')
@@ -44,23 +47,29 @@ app.get('/', async (req, res) => {
     res.status(201).json({ resultado: productList })
 })
 
+app.post('/api/carts', async (req, res) => {
+    try {
+        const newCart = await cartManager.createCart()
+        res.status(201).json({ message: 'Carrito creado', cart: newCart });
+    } catch (error) {
+        console.error('Error al crear el carrito:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+
 app.post('/:cid/products/:pid', async (req, res) => {
     try {
         const cartId = parseInt(req.params.cid);
         const productId = parseInt(req.params.pid);
 
-        // 1. Obtén el producto desde productManager:
+
         const product = await productManager.getProductById(productId);
 
         if (!product) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
-
-        // 2. Agrega el producto al carrito usando cartManager:
-        await cartManager.addProductToCart(cartId, product); // Asegúrate de tener este método en cartManager
-
-        // 3. (Opcional) Elimina el producto de product.json si es necesario
-        // await productManager.deleteProductById(productId); 
+        await cartManager.addProductToCart(cartId, productId);
 
         res.status(200).json({ message: 'Producto agregado al carrito exitosamente' });
     } catch (error) {
@@ -72,3 +81,5 @@ app.post('/:cid/products/:pid', async (req, res) => {
 app.listen(8080, () => {
     console.log('SERVIDOR PUESTO EN LINEA, ALOJADO EN EL PUERTO 8080')
 })
+
+
